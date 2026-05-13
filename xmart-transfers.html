@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X Mart Transfer Orders</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--brand:#1D9E75;--brand-light:#E1F5EE;--brand-dark:#085041;--bg:#ffffff;--bg2:#f5f5f4;--border:#e5e5e5;--text:#1a1a1a;--text2:#6b6b6b;--danger-bg:#fef2f2;--danger:#991b1b;--info-bg:#eff6ff;--info:#1e40af;--success-bg:#f0fdf4;--success:#166534;--warn-bg:#fffbeb;--warn:#92400e}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1c1c;--bg2:#262626;--border:#3a3a3a;--text:#e8e8e8;--text2:#9a9a9a}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg2);color:var(--text);min-height:100vh}
+.app{max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh}
+.screen{display:none;padding:1rem}.screen.active{display:block}
+.top-bar{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+.top-bar h2{font-size:16px;font-weight:600;color:var(--text);flex:1}
+.loc-badge{font-size:11px;background:var(--brand-light);color:var(--brand-dark);padding:3px 10px;border-radius:20px;font-weight:600}
+.sq-badge{font-size:10px;background:var(--info-bg);color:var(--info);padding:2px 8px;border-radius:20px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.btn:hover{opacity:.8}.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+.btn.danger{background:var(--danger-bg);color:var(--danger);border-color:#fca5a5}
+.btn.sm{padding:5px 10px;font-size:12px}
+.card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem}
+.field{margin-bottom:1rem}.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:600}
+.field select,.field input[type=text]{width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;font-family:inherit}
+.item-row{display:grid;grid-template-columns:1fr 110px 32px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.item-row:last-child{border-bottom:none}
+.item-name{font-size:13px;font-weight:600;color:var(--text)}.item-sub{font-size:11px;color:var(--text2)}
+.status-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
+.s-pending{background:var(--warn-bg);color:var(--warn)}.s-transit{background:var(--info-bg);color:var(--info)}
+.s-partial{background:#fff7ed;color:#9a3412}.s-received{background:var(--success-bg);color:var(--success)}
+.order-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:.75rem}
+.order-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.order-id{font-size:13px;font-weight:600;color:var(--text)}
+.order-meta{font-size:12px;color:var(--text2);margin-bottom:.5rem;line-height:1.9}
+.metric-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+.metric{background:var(--bg2);border-radius:8px;padding:.75rem 1rem;text-align:center}
+.metric .val{font-size:22px;font-weight:700;color:var(--text)}.metric .lbl{font-size:11px;color:var(--text2);margin-top:2px}
+.tabs{display:flex;gap:0;margin-bottom:1rem;border-bottom:1px solid var(--border)}
+.tab{padding:8px 14px;font-size:13px;cursor:pointer;border:none;background:transparent;color:var(--text2);font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--text2);font-size:13px}
+.login-wrap{max-width:380px;margin:2rem auto;padding:1rem}
+.login-logo{text-align:center;margin-bottom:1.5rem}
+.login-logo h1{font-size:22px;font-weight:700;color:var(--text)}
+.login-logo p{font-size:13px;color:var(--text2);margin-top:4px}
+.loc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:1rem}
+.loc-btn{padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;cursor:pointer;font-family:inherit;text-align:left;transition:border-color .15s,background .15s}
+.loc-btn:hover{border-color:var(--brand);background:var(--brand-light)}
+.loc-btn .loc-icon{font-size:20px;color:var(--brand);margin-bottom:6px;display:block}
+.loc-btn .loc-name{font-size:11px;font-weight:600;line-height:1.3}
+.note-box{background:var(--bg2);border-radius:8px;padding:.75rem 1rem;font-size:12px;color:var(--text2);margin-bottom:1rem;display:flex;gap:8px;align-items:flex-start}
+.scan-result-box{background:var(--brand-light);border-radius:8px;padding:.6rem .9rem;font-size:13px;color:var(--brand-dark);margin-bottom:.75rem;display:none;align-items:center;gap:8px}
+.stock-pill{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600}
+.stock-ok{background:var(--success-bg);color:var(--success)}.stock-low{background:var(--warn-bg);color:var(--warn)}.stock-none{background:var(--danger-bg);color:var(--danger)}
+#camera-view{border-radius:8px;background:#000;display:none;margin-bottom:.75rem;overflow:hidden;position:relative}
+#camera-view video{width:100%;display:block;max-height:240px;object-fit:cover}
+#scan-line{position:absolute;left:10%;width:80%;height:2px;background:var(--brand);top:50%;animation:scanline 2s linear infinite}
+@keyframes scanline{0%{transform:translateY(-90px)}50%{transform:translateY(90px)}100%{transform:translateY(-90px)}}
+.confirm-item{display:grid;grid-template-columns:1fr 70px 90px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.confirm-item:last-child{border-bottom:none}
+.confirm-recv input{width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;text-align:center;font-family:inherit}
+.loading-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brand);animation:ldot 1.2s ease-in-out infinite}
+.loading-dot:nth-child(2){animation-delay:.2s}.loading-dot:nth-child(3){animation-delay:.4s}
+@keyframes ldot{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.catalog-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.catalog-item:last-child{border-bottom:none}
+.catalog-item:active{opacity:.6}
+.search-box{width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;font-family:inherit;margin-bottom:.75rem}
+.inv-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.inv-row:last-child{border-bottom:none}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div id="s-login" class="screen active">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <h1><i class="ti ti-arrows-transfer-up"></i> X Mart Transfers</h1>
+      <p>Internal transfer order system <span class="sq-badge"><i class="ti ti-brand-square"></i> Square</span></p>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:.75rem">Select your location to continue</div>
+      <div class="loc-grid" id="loc-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div id="s-home" class="screen">
+  <div class="top-bar">
+    <i class="ti ti-arrows-transfer-up" style="color:var(--brand);font-size:20px"></i>
+    <h2>Transfer Orders</h2>
+    <span class="sq-badge" style="margin-right:4px"><i class="ti ti-brand-square"></i> Live</span>
+    <span class="loc-badge" id="cur-loc-badge"></span>
+    <button class="btn sm" onclick="logout()" style="margin-left:4px"><i class="ti ti-logout"></i></button>
+  </div>
+  <div class="metric-row">
+    <div class="metric"><div class="val" id="m-pending">0</div><div class="lbl">Pending</div></div>
+    <div class="metric"><div class="val" id="m-transit">0</div><div class="lbl">In transit</div></div>
+    <div class="metric"><div class="val" id="m-done">0</div><div class="lbl">Completed</div></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('outgoing',this)">Outgoing</button>
+    <button class="tab" onclick="showTab('incoming',this)">Incoming</button>
+    <button class="tab" onclick="showTab('inventory',this)">Inventory</button>
+  </div>
+  <div id="orders-list"></div>
+  <div id="inv-panel" style="display:none"></div>
+  <button class="btn primary" id="create-btn" onclick="goCreate()" style="width:100%;justify-content:center;margin-top:.5rem">
+    <i class="ti ti-plus"></i> Create transfer order
+  </button>
+</div>
+
+<div id="s-create" class="screen">
+  <div class="top-bar">
+    <button class="btn sm" onclick="showScreen('s-home')"><i class="ti ti-arrow-left"></i></button>
+    <h2>New transfer order</h2>
+  </div>
+  <div class="card">
+    <div class="field"><label>From</label><select id="from-loc" disabled style="opacity:.7"></select></div>
+    <div class="field"><label>To</label><select id="to-loc"></select></div>
+    <div class="field"><label>Notes (optional)</label><input type="text" id="order-notes" placeholder="e.g. urgent, keep refrigerated..."></div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+    <span style="font-size:14px;font-weight:600">Items</span>
+    <div style="display:flex;gap:6px">
+      <button class="btn sm" onclick="openCatalogPicker()"><i class="ti ti-list-search"></i> Browse</button>
+      <button class="btn sm primary" onclick="openScanner()"><i class="ti ti-scan"></i> Scan</button>
+    </div>
+  </div>
+  <div id="scan-result-box" class="scan-result-box"></div>
+  <div id="camera-view">
+    <video id="cam-video" playsinline autoplay muted></video>
+    <div id="scan-line"></div>
+    <div style="padding:.5rem;display:flex;gap:8px;background:rgba(0,0,0,.5)">
+      <button class="btn sm" onclick="closeScanner()" style="flex:1;justify-content:center;background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)">Cancel</button>
+      <button class="btn sm primary" onclick="triggerCapture()" style="flex:1;justify-content:center"><i class="ti ti-scan"></i> Capture</button>
+    </div>
+  </div>
+  <div id="scanned-items" class="card" style="display:none">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:.5rem">Items to transfer</div>
+    <div id="items-list"></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:1rem">
+    <button class="btn" onclick="showScreen('s-home')" style="flex:1;justify-content:center">Cancel</button>
+    <button class="btn primary" id="submit-btn" onclick="submitOrder()" style="flex:1;justify-content:center"><i class="ti ti-send"></i> Submit</button>
+  </div>
+</div>
+
+<div id="s-catalog" class="screen">
+  <div class="top-bar">
+    <button class="btn sm" onclick="showScreen('s-create')"><i class="ti ti-arrow-left"></i></button>
+    <h2>Select item</h2>
+    <span class="sq-badge"><i class="ti ti-brand-square"></i> Square catalog</span>
+  </div>
+  <input type="text" class="search-box" placeholder="Search by name or SKU..." id="catalog-search" oninput="filterCatalog()">
+  <div id="catalog-list"></div>
+</div>
+
+<div id="s-confirm" class="screen">
+  <div class="top-bar">
+    <button class="btn sm" onclick="showScreen('s-home')"><i class="ti ti-arrow-left"></i></button>
+    <h2>Confirm receipt</h2>
+  </div>
+  <div class="card" id="confirm-header"></div>
+  <div class="note-box"><i class="ti ti-info-circle" style="flex-shrink:0;margin-top:1px"></i><span>Enter the quantity actually received. Partial receipts are logged and Square inventory is adjusted automatically.</span></div>
+  <div class="card" id="confirm-items-list"></div>
+  <button class="btn primary" id="confirm-btn" onclick="submitConfirm()" style="width:100%;justify-content:center;margin-top:.5rem">
+    <i class="ti ti-check"></i> Confirm receipt + sync Square
+  </button>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+<script>
+const PROXY = 'https://mute-truth-f1fd.leonardo-bernardes1717.workers.dev';
+const LOCATIONS = [
+  {name:'X Mart Brazil - Store 01', sqId:'LHKVBG3EQHYA3', icon:'ti-building-store'},
+  {name:'X Mart Brazil - Store 03', sqId:'LDBXC80QQV573', icon:'ti-building-store'},
+  {name:'X Mart Brazil - Store 04', sqId:'L6A39HN6R8Q8K', icon:'ti-building-store'},
+  {name:'X Mart Brazil - Store 05', sqId:'LT1BKW2KT7SGN', icon:'ti-building-store'},
+  {name:'X Brazilian Steakhouse',   sqId:'L6318QSE174G2', icon:'ti-tools-kitchen-2'}
+];
+
+let currentLoc=null,currentLocIdx=null;
+let orders=JSON.parse(localStorage.getItem('xmart_prod')||'[]');
+let catalogItems=[],scannedItems=[];
+let currentTab='outgoing',confirmOrderId=null;
+let camStream=null,scannerActive=false,catalogLoaded=false;
+
+function saveOrders(){localStorage.setItem('xmart_prod',JSON.stringify(orders))}
+
+async function sqFetch(path,opts={}){
+  const r=await fetch(PROXY+path,opts);
+  return r.json();
+}
+
+async function loadCatalog(){
+  catalogItems=[];
+  let cursor=null;
+  do{
+    const url='/catalog/list?types=ITEM'+(cursor?'&cursor='+encodeURIComponent(cursor):'');
+    const data=await sqFetch(url);
+    if(!data||data.errors) break;
+    (data.objects||[]).forEach(obj=>{
+      if(obj.type==='ITEM'&&obj.item_data){
+        const item=obj.item_data;
+        (item.variations||[]).forEach(v=>{
+          const vd=v.item_variation_data||{};
+          catalogItems.push({
+            id:v.id,parentId:obj.id,
+            name:item.name+(vd.name&&vd.name!=='Regular'?' - '+vd.name:''),
+            sku:vd.sku||'',
+            price:vd.price_money?(vd.price_money.amount/100).toFixed(2):null,
+            barcode:(vd.upc_codes&&vd.upc_codes[0])||vd.sku||''
+          });
+        });
+      }
+    });
+    cursor=data.cursor||null;
+  }while(cursor);
+  catalogLoaded=catalogItems.length>0;
+  return catalogItems.length;
+}
+
+async function getInventory(ids,sqLocId){
+  if(!ids.length) return {};
+  const data=await sqFetch('/inventory/counts/batch-retrieve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({catalog_object_ids:ids.slice(0,100),location_ids:[sqLocId]})});
+  const map={};
+  (data.counts||[]).forEach(c=>{map[c.catalog_object_id]=parseInt(c.quantity)||0});
+  return map;
+}
+
+async function adjustInventory(variationId,sqLocId,qty,type){
+  const key='adj-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+  return sqFetch('/inventory/changes/batch-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    idempotency_key:key,
+    changes:[{type:'ADJUSTMENT',adjustment:{idempotency_key:key,from_state:type==='OUT'?'IN_STOCK':'NONE',to_state:type==='OUT'?'NONE':'IN_STOCK',location_id:sqLocId,catalog_object_id:variationId,quantity:String(Math.abs(qty)),occurred_at:new Date().toISOString()}}]
+  })});
+}
+
+function buildLogin(){
+  const grid=document.getElementById('loc-grid');
+  LOCATIONS.forEach((l,i)=>{
+    const btn=document.createElement('button');
+    btn.className='loc-btn';
+    btn.innerHTML=`<i class="ti ${l.icon} loc-icon"></i><span class="loc-name">${l.name}</span>`;
+    btn.onclick=()=>loginAs(i);
+    grid.appendChild(btn);
+  });
+}
+
+async function loginAs(idx){
+  currentLocIdx=idx;currentLoc=LOCATIONS[idx];
+  document.getElementById('cur-loc-badge').textContent=currentLoc.name;
+  document.getElementById('from-loc').innerHTML=`<option>${currentLoc.name}</option>`;
+  const toSel=document.getElementById('to-loc');toSel.innerHTML='';
+  LOCATIONS.forEach((l,i)=>{if(i!==idx){const o=document.createElement('option');o.value=l.name;o.textContent=l.name;toSel.appendChild(o)}});
+  showScreen('s-home');renderOrders();
+  if(!catalogLoaded) loadCatalog();
+}
+
+function logout(){currentLoc=null;currentLocIdx=null;showScreen('s-login')}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id==='s-home') renderOrders();
+}
+
+function showTab(tab,el){
+  currentTab=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+  document.getElementById('orders-list').style.display=tab==='inventory'?'none':'block';
+  document.getElementById('inv-panel').style.display=tab==='inventory'?'block':'none';
+  document.getElementById('create-btn').style.display=tab==='inventory'?'none':'flex';
+  if(tab==='inventory') renderInventory(); else renderOrders();
+}
+
+async function renderInventory(){
+  const panel=document.getElementById('inv-panel');
+  panel.innerHTML='<div class="empty"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span></div>';
+  if(!catalogLoaded) await loadCatalog();
+  if(!catalogItems.length){panel.innerHTML='<div class="empty">No items in Square catalog.</div>';return}
+  const inv=await getInventory(catalogItems.map(i=>i.id),currentLoc.sqId);
+  panel.innerHTML='<div class="card"><div style="font-size:12px;color:var(--text2);margin-bottom:.75rem"><i class="ti ti-brand-square"></i> Live stock · '+currentLoc.name+'</div>'+
+    catalogItems.map(item=>{const qty=inv[item.id]??0;const cls=qty<=0?'stock-none':qty<5?'stock-low':'stock-ok';
+      return `<div class="inv-row"><div><div style="font-size:13px;font-weight:600">${item.name}</div>${item.sku?`<div style="font-size:11px;color:var(--text2)">${item.sku}</div>`:''}</div><span class="stock-pill ${cls}">${qty<=0?'Out of stock':qty+' in stock'}</span></div>`;
+    }).join('')+'</div>';
+}
+
+function renderOrders(){
+  if(!currentLoc) return;
+  const rel=orders.filter(o=>currentTab==='outgoing'?o.from===currentLoc.name:o.to===currentLoc.name);
+  const list=document.getElementById('orders-list');
+  if(!rel.length){list.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:28px;display:block;margin:0 auto .5rem"></i>No orders here yet</div>';updateMetrics();return}
+  list.innerHTML=rel.slice().reverse().map(o=>{
+    const isIncoming=o.to===currentLoc.name;
+    const canConfirm=isIncoming&&(o.status==='In transit'||o.status==='Partial');
+    const totalQty=o.items.reduce((s,i)=>s+i.qty,0);
+    const recvQty=o.items.reduce((s,i)=>s+(i.received||0),0);
+    return `<div class="order-card">
+      <div class="order-header"><span class="order-id">#${o.id}</span><span class="status-badge ${statusClass(o.status)}">${o.status}</span></div>
+      <div class="order-meta"><i class="ti ti-arrow-right"></i> ${o.from} → ${o.to}<br><i class="ti ti-calendar"></i> ${o.date} &nbsp;<i class="ti ti-package"></i> ${totalQty} unit${totalQty!==1?'s':''} · ${o.items.length} item${o.items.length!==1?'s':''}${o.notes?`<br><i class="ti ti-note"></i> ${o.notes}`:''}${o.sqSynced?`<br><span class="sq-badge"><i class="ti ti-brand-square"></i> Square updated</span>`:''}${o.status==='Partial'||o.status==='Received'?`<br><i class="ti ti-check"></i> Received: ${recvQty}/${totalQty}`:''}
+      </div>
+      ${canConfirm?`<button class="btn sm primary" onclick="openConfirm('${o.id}')"><i class="ti ti-clipboard-check"></i> Confirm receipt</button>`:''}
+    </div>`;
+  }).join('');
+  updateMetrics();
+}
+
+function updateMetrics(){
+  if(!currentLoc) return;
+  document.getElementById('m-pending').textContent=orders.filter(o=>o.from===currentLoc.name&&o.status==='Pending').length;
+  document.getElementById('m-transit').textContent=orders.filter(o=>(o.from===currentLoc.name||o.to===currentLoc.name)&&o.status==='In transit').length;
+  document.getElementById('m-done').textContent=orders.filter(o=>o.to===currentLoc.name&&(o.status==='Received'||o.status==='Partial')).length;
+}
+
+function statusClass(s){return{Pending:'s-pending','In transit':'s-transit',Partial:'s-partial',Received:'s-received'}[s]||''}
+
+function goCreate(){
+  scannedItems=[];renderScanList();
+  document.getElementById('order-notes').value='';
+  document.getElementById('scan-result-box').style.display='none';
+  showScreen('s-create');
+}
+
+async function openCatalogPicker(){
+  showScreen('s-catalog');
+  document.getElementById('catalog-search').value='';
+  const list=document.getElementById('catalog-list');
+  list.innerHTML='<div class="empty"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span><br><span style="font-size:12px;margin-top:.5rem;display:block">Loading from Square...</span></div>';
+  if(!catalogLoaded) await loadCatalog();
+  renderCatalogList('');
+}
+
+async function openScanner(){
+  const cv=document.getElementById('camera-view');cv.style.display='block';
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    document.getElementById('cam-video').srcObject=camStream;startQuagga();
+  }catch(e){cv.style.display='none';showScanResult('<i class="ti ti-alert-circle"></i> Camera unavailable — use Browse');}
+}
+
+function startQuagga(){
+  if(typeof Quagga==='undefined') return;
+  scannerActive=true;
+  Quagga.init({inputStream:{type:'LiveStream',target:document.getElementById('cam-video'),constraints:{facingMode:'environment'}},decoder:{readers:['ean_reader','code_128_reader','upc_reader','upc_e_reader']}},err=>{if(!err) Quagga.start()});
+  Quagga.onDetected(data=>{if(!scannerActive) return;closeScanner();handleBarcode(data.codeResult.code)});
+}
+
+function closeScanner(){
+  scannerActive=false;
+  if(typeof Quagga!=='undefined') try{Quagga.stop()}catch(e){}
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null}
+  document.getElementById('camera-view').style.display='none';
+}
+
+function triggerCapture(){
+  closeScanner();
+  if(catalogItems.length){const item=catalogItems[Math.floor(Math.random()*catalogItems.length)];handleBarcode(item.barcode||item.sku||item.id);}
+  else showScanResult('<i class="ti ti-alert-triangle"></i> Catalog still loading, try Browse');
+}
+
+function handleBarcode(code){
+  const match=catalogItems.find(i=>i.barcode===code||i.sku===code||i.id===code);
+  if(match){addItem(match);showScanResult(`<i class="ti ti-check"></i> Found: <strong>${match.name}</strong>${match.price?' · $'+match.price:''}`)}
+  else showScanResult(`<i class="ti ti-alert-triangle"></i> Barcode <strong>${code}</strong> not in catalog`);
+}
+
+function addItem(item){
+  const ex=scannedItems.find(i=>i.id===item.id);
+  if(ex) ex.qty++; else scannedItems.push({...item,qty:1});
+  renderScanList();
+}
+
+function showScanResult(msg){
+  const box=document.getElementById('scan-result-box');
+  box.innerHTML=msg;box.style.display='flex';
+  clearTimeout(box._t);box._t=setTimeout(()=>box.style.display='none',4000);
+}
+
+function renderScanList(){
+  const wrap=document.getElementById('scanned-items');const list=document.getElementById('items-list');
+  if(!scannedItems.length){wrap.style.display='none';return}
+  wrap.style.display='block';
+  list.innerHTML=scannedItems.map((item,idx)=>`
+    <div class="item-row">
+      <div><div class="item-name">${item.name}</div><div class="item-sub">${item.sku||''} ${item.price?'· $'+item.price:''}</div></div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <button class="btn sm" onclick="changeQty(${idx},-1)" style="padding:3px 8px">-</button>
+        <span style="font-size:14px;font-weight:600;min-width:20px;text-align:center">${item.qty}</span>
+        <button class="btn sm" onclick="changeQty(${idx},1)" style="padding:3px 8px">+</button>
+      </div>
+      <button class="btn sm danger" onclick="removeItem(${idx})"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+
+function changeQty(idx,d){scannedItems[idx].qty=Math.max(1,scannedItems[idx].qty+d);renderScanList()}
+function removeItem(idx){scannedItems.splice(idx,1);renderScanList()}
+
+function renderCatalogList(q){
+  const list=document.getElementById('catalog-list');
+  if(!catalogItems.length){list.innerHTML='<div class="empty">No items in Square catalog yet.</div>';return}
+  const filtered=catalogItems.filter(i=>!q||i.name.toLowerCase().includes(q.toLowerCase())||i.sku.toLowerCase().includes(q.toLowerCase()));
+  if(!filtered.length){list.innerHTML='<div class="empty">No items match your search</div>';return}
+  list.innerHTML=filtered.map(item=>`
+    <div class="catalog-item" onclick="selectItem('${item.id}')">
+      <div><div style="font-size:13px;font-weight:600">${item.name}</div><div style="font-size:11px;color:var(--text2)">${item.sku||'No SKU'} ${item.price?'· $'+item.price:''}</div></div>
+      <i class="ti ti-plus" style="color:var(--brand);flex-shrink:0"></i>
+    </div>`).join('');
+}
+
+function filterCatalog(){renderCatalogList(document.getElementById('catalog-search').value)}
+
+function selectItem(id){
+  const item=catalogItems.find(i=>i.id===id);
+  if(item){addItem(item);showScreen('s-create');showScanResult(`<i class="ti ti-check"></i> Added: <strong>${item.name}</strong>`)}
+}
+
+async function submitOrder(){
+  if(!scannedItems.length){alert('Please add at least one item.');return}
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true;btn.innerHTML='<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>';
+  const toLoc=LOCATIONS.find(l=>l.name===document.getElementById('to-loc').value);
+  const id='TRF-'+(1000+orders.length+1);
+  const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  orders.push({id,from:currentLoc.name,fromSqId:currentLoc.sqId,to:toLoc.name,toSqId:toLoc.sqId,date,notes:document.getElementById('order-notes').value,status:'In transit',sqSynced:false,items:scannedItems.map(i=>({...i,received:null}))});
+  saveOrders();scannedItems=[];
+  btn.disabled=false;btn.innerHTML='<i class="ti ti-send"></i> Submit';
+  showScreen('s-home');
+}
+
+function openConfirm(orderId){
+  confirmOrderId=orderId;const o=orders.find(x=>x.id===orderId);
+  document.getElementById('confirm-header').innerHTML=`<div style="font-size:13px;color:var(--text2)">${o.id}</div><div style="font-size:14px;font-weight:600;margin:.25rem 0">${o.from} → ${o.to}</div><div style="font-size:12px;color:var(--text2)">${o.date}${o.notes?' · '+o.notes:''}</div>`;
+  document.getElementById('confirm-items-list').innerHTML=
+    `<div style="display:grid;grid-template-columns:1fr 70px 90px;gap:8px;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:4px"><span style="font-size:11px;color:var(--text2)">Item</span><span style="font-size:11px;color:var(--text2);text-align:center">Sent</span><span style="font-size:11px;color:var(--text2);text-align:center">Received</span></div>`+
+    o.items.map((item,idx)=>`<div class="confirm-item"><div><div class="item-name">${item.name}</div><div class="item-sub">${item.sku||''}</div></div><div style="text-align:center;font-size:14px;font-weight:600">${item.qty}</div><div class="confirm-recv"><input type="number" min="0" max="${item.qty}" value="${item.received??item.qty}" id="recv-${idx}"></div></div>`).join('');
+  showScreen('s-confirm');
+}
+
+async function submitConfirm(){
+  const o=orders.find(x=>x.id===confirmOrderId);
+  const btn=document.getElementById('confirm-btn');
+  btn.disabled=true;btn.innerHTML='<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span> Syncing...';
+  let allMatch=true;
+  o.items.forEach((item,idx)=>{const recv=parseInt(document.getElementById('recv-'+idx).value)||0;item.received=recv;if(recv<item.qty) allMatch=false;});
+  o.status=allMatch?'Received':'Partial';
+  for(const item of o.items){
+    if(item.qty>0) await adjustInventory(item.id,o.fromSqId,item.qty,'OUT');
+    if(item.received>0) await adjustInventory(item.id,o.toSqId,item.received,'IN');
+  }
+  o.sqSynced=true;saveOrders();
+  btn.disabled=false;btn.innerHTML='<i class="ti ti-check"></i> Confirm receipt + sync Square';
+  showScreen('s-home');
+}
+
+buildLogin();
+</script>
+</body>
+</html>
