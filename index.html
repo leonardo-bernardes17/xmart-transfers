@@ -270,13 +270,14 @@ async function adjustInventory(variationId, sqLocId, qty, type){
     changes:[{
       type:'ADJUSTMENT',
       adjustment:{
-        idempotency_key: key,
+        reference_id: key,
         from_state: type==='OUT'?'IN_STOCK':'NONE',
         to_state:   type==='OUT'?'NONE':'IN_STOCK',
         location_id: sqLocId,
         catalog_object_id: variationId,
         quantity: String(Math.abs(qty)),
-        occurred_at: new Date().toISOString()
+        occurred_at: new Date().toISOString(),
+        source: { product: 'EXTERNAL_API' }
       }
     }]
   };
