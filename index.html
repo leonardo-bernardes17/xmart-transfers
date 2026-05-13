@@ -266,7 +266,7 @@ async function adjustInventory(variationId, sqLocId, qty, type){
   const key='adj-'+Date.now()+'-'+Math.random().toString(36).slice(2);
   addLog('info',`Adjusting inventory: ${type} ${qty}x variationId=${variationId} location=${sqLocId}`);
   const body = {
-    idempotency_key: key,
+    reference_id: key,
     changes:[{
       type:'ADJUSTMENT',
       adjustment:{
