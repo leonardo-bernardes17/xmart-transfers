@@ -70,6 +70,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .search-box{width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;font-family:inherit;margin-bottom:.75rem}
 .inv-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
 .inv-row:last-child{border-bottom:none}
+.log-entry{padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;font-family:monospace}
+.log-entry:last-child{border-bottom:none}
+.log-ok{color:var(--success)}.log-err{color:var(--danger)}.log-info{color:var(--text2)}
+.log-raw{background:var(--bg2);border-radius:6px;padding:6px 8px;margin-top:4px;font-size:11px;word-break:break-all;white-space:pre-wrap;max-height:120px;overflow-y:auto}
 </style>
 </head>
 <body>
@@ -105,9 +109,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="tab active" onclick="showTab('outgoing',this)">Outgoing</button>
     <button class="tab" onclick="showTab('incoming',this)">Incoming</button>
     <button class="tab" onclick="showTab('inventory',this)">Inventory</button>
+    <button class="tab" onclick="showTab('synclog',this)">Sync log</button>
   </div>
   <div id="orders-list"></div>
   <div id="inv-panel" style="display:none"></div>
+  <div id="synclog-panel" style="display:none"></div>
   <button class="btn primary" id="create-btn" onclick="goCreate()" style="width:100%;justify-content:center;margin-top:.5rem">
     <i class="ti ti-plus"></i> Create transfer order
   </button>
@@ -165,7 +171,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <h2>Confirm receipt</h2>
   </div>
   <div class="card" id="confirm-header"></div>
-  <div class="note-box"><i class="ti ti-info-circle" style="flex-shrink:0;margin-top:1px"></i><span>Enter the quantity actually received. Partial receipts are logged and Square inventory is adjusted automatically.</span></div>
+  <div class="note-box"><i class="ti ti-info-circle" style="flex-shrink:0;margin-top:1px"></i><span>Enter the quantity actually received. Square inventory is adjusted automatically on confirm.</span></div>
   <div class="card" id="confirm-items-list"></div>
   <button class="btn primary" id="confirm-btn" onclick="submitConfirm()" style="width:100%;justify-content:center;margin-top:.5rem">
     <i class="ti ti-check"></i> Confirm receipt + sync Square
@@ -173,7 +179,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 <script>
 const PROXY = 'https://mute-truth-f1fd.leonardo-bernardes1717.workers.dev';
@@ -187,15 +192,35 @@ const LOCATIONS = [
 
 let currentLoc=null,currentLocIdx=null;
 let orders=JSON.parse(localStorage.getItem('xmart_prod')||'[]');
-let catalogItems=[],scannedItems=[];
+let catalogItems=[],scannedItems=[],syncLogs=[];
 let currentTab='outgoing',confirmOrderId=null;
 let camStream=null,scannerActive=false,catalogLoaded=false;
 
 function saveOrders(){localStorage.setItem('xmart_prod',JSON.stringify(orders))}
 
-async function sqFetch(path,opts={}){
-  const r=await fetch(PROXY+path,opts);
-  return r.json();
+function addLog(type, msg, raw){
+  const ts = new Date().toLocaleTimeString();
+  syncLogs.unshift({type, msg, raw, ts});
+  if(syncLogs.length>50) syncLogs.pop();
+}
+
+async function sqFetch(path, opts={}){
+  addLog('info', 'Request: '+path);
+  try{
+    const r = await fetch(PROXY+path, opts);
+    const text = await r.text();
+    let json;
+    try{ json = JSON.parse(text); }catch(e){ json = {_raw: text}; }
+    if(json.errors){
+      addLog('err', 'Square error on '+path, JSON.stringify(json.errors, null, 2));
+    } else {
+      addLog('ok', 'Success: '+path+' (HTTP '+r.status+')', JSON.stringify(json).slice(0,300));
+    }
+    return json;
+  }catch(e){
+    addLog('err', 'Fetch failed: '+path+' — '+e.message);
+    return null;
+  }
 }
 
 async function loadCatalog(){
@@ -211,7 +236,7 @@ async function loadCatalog(){
         (item.variations||[]).forEach(v=>{
           const vd=v.item_variation_data||{};
           catalogItems.push({
-            id:v.id,parentId:obj.id,
+            id:v.id, parentId:obj.id,
             name:item.name+(vd.name&&vd.name!=='Regular'?' - '+vd.name:''),
             sku:vd.sku||'',
             price:vd.price_money?(vd.price_money.amount/100).toFixed(2):null,
@@ -228,18 +253,38 @@ async function loadCatalog(){
 
 async function getInventory(ids,sqLocId){
   if(!ids.length) return {};
-  const data=await sqFetch('/inventory/counts/batch-retrieve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({catalog_object_ids:ids.slice(0,100),location_ids:[sqLocId]})});
+  const data=await sqFetch('/inventory/counts/batch-retrieve',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({catalog_object_ids:ids.slice(0,100),location_ids:[sqLocId]})
+  });
   const map={};
-  (data.counts||[]).forEach(c=>{map[c.catalog_object_id]=parseInt(c.quantity)||0});
+  if(data&&data.counts) data.counts.forEach(c=>{map[c.catalog_object_id]=parseInt(c.quantity)||0});
   return map;
 }
 
-async function adjustInventory(variationId,sqLocId,qty,type){
+async function adjustInventory(variationId, sqLocId, qty, type){
   const key='adj-'+Date.now()+'-'+Math.random().toString(36).slice(2);
-  return sqFetch('/inventory/changes/batch-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    idempotency_key:key,
-    changes:[{type:'ADJUSTMENT',adjustment:{idempotency_key:key,from_state:type==='OUT'?'IN_STOCK':'NONE',to_state:type==='OUT'?'NONE':'IN_STOCK',location_id:sqLocId,catalog_object_id:variationId,quantity:String(Math.abs(qty)),occurred_at:new Date().toISOString()}}]
-  })});
+  addLog('info',`Adjusting inventory: ${type} ${qty}x variationId=${variationId} location=${sqLocId}`);
+  const body = {
+    idempotency_key: key,
+    changes:[{
+      type:'ADJUSTMENT',
+      adjustment:{
+        idempotency_key: key,
+        from_state: type==='OUT'?'IN_STOCK':'NONE',
+        to_state:   type==='OUT'?'NONE':'IN_STOCK',
+        location_id: sqLocId,
+        catalog_object_id: variationId,
+        quantity: String(Math.abs(qty)),
+        occurred_at: new Date().toISOString()
+      }
+    }]
+  };
+  return sqFetch('/inventory/changes/batch-create',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
 }
 
 function buildLogin(){
@@ -274,10 +319,23 @@ function showScreen(id){
 function showTab(tab,el){
   currentTab=tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
-  document.getElementById('orders-list').style.display=tab==='inventory'?'none':'block';
+  document.getElementById('orders-list').style.display=tab==='outgoing'||tab==='incoming'?'block':'none';
   document.getElementById('inv-panel').style.display=tab==='inventory'?'block':'none';
-  document.getElementById('create-btn').style.display=tab==='inventory'?'none':'flex';
-  if(tab==='inventory') renderInventory(); else renderOrders();
+  document.getElementById('synclog-panel').style.display=tab==='synclog'?'block':'none';
+  document.getElementById('create-btn').style.display=tab==='outgoing'||tab==='incoming'?'flex':'none';
+  if(tab==='inventory') renderInventory();
+  else if(tab==='synclog') renderSyncLog();
+  else renderOrders();
+}
+
+function renderSyncLog(){
+  const panel=document.getElementById('synclog-panel');
+  if(!syncLogs.length){panel.innerHTML='<div class="empty">No sync activity yet.<br>Create a transfer and confirm receipt to see logs.</div>';return}
+  panel.innerHTML='<div class="card">'+syncLogs.map(l=>`
+    <div class="log-entry">
+      <span class="log-${l.type}">${l.type==='ok'?'✓':l.type==='err'?'✗':'·'} [${l.ts}] ${l.msg}</span>
+      ${l.raw?`<div class="log-raw">${l.raw}</div>`:''}
+    </div>`).join('')+'</div>';
 }
 
 async function renderInventory(){
@@ -448,14 +506,19 @@ async function submitConfirm(){
   const btn=document.getElementById('confirm-btn');
   btn.disabled=true;btn.innerHTML='<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span> Syncing...';
   let allMatch=true;
-  o.items.forEach((item,idx)=>{const recv=parseInt(document.getElementById('recv-'+idx).value)||0;item.received=recv;if(recv<item.qty) allMatch=false;});
+  o.items.forEach((item,idx)=>{
+    const recv=parseInt(document.getElementById('recv-'+idx).value)||0;
+    item.received=recv;if(recv<item.qty) allMatch=false;
+  });
   o.status=allMatch?'Received':'Partial';
+  addLog('info', `Starting sync for order ${o.id} — ${o.items.length} item(s)`);
   for(const item of o.items){
-    if(item.qty>0) await adjustInventory(item.id,o.fromSqId,item.qty,'OUT');
-    if(item.received>0) await adjustInventory(item.id,o.toSqId,item.received,'IN');
+    if(item.qty>0) await adjustInventory(item.id, o.fromSqId, item.qty, 'OUT');
+    if(item.received>0) await adjustInventory(item.id, o.toSqId, item.received, 'IN');
   }
   o.sqSynced=true;saveOrders();
   btn.disabled=false;btn.innerHTML='<i class="ti ti-check"></i> Confirm receipt + sync Square';
+  addLog('ok', `Order ${o.id} sync complete — check Sync log tab for details`);
   showScreen('s-home');
 }
 
